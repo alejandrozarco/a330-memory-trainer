@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>A330 Memory Item Trainer</title>
+    <style>
+        :root { --airbus-blue: #0051a8; }
+
+    body {
+        font-family: "Helvetica", Arial, sans-serif;
+        background-color: #f4f7f9;
+        display: flex; flex-direction: column; align-items: center;
+        padding: 20px; margin: 0;
+        -webkit-tap-highlight-color: transparent;
+        user-select: none;
+    }
+
+    h1 { font-size: 17px; color: var(--airbus-blue); margin: 0 0 4px 0; text-align: center; letter-spacing: 1px; }
+    .subtitle { font-size: 11px; color: #888; margin-bottom: 4px; letter-spacing: 1px; }
+    .progress { font-size: 12px; color: #555; margin-bottom: 2px; }
+
+    .card-container {
+        width: 100%; max-width: 650px;
+        min-height: 480px;
+        cursor: pointer; perspective: 1000px; margin-top: 12px;
+    }
+    .card-inner {
+        position: relative; width: 100%; min-height: 480px;
+        transition: transform 0.4s ease; transform-style: preserve-3d;
+    }
+    .card-container.flipped .card-inner { transform: rotateY(180deg); }
+
+    .card-front, .card-back {
+        position: absolute; width: 100%; min-height: 480px;
+        backface-visibility: hidden; -webkit-backface-visibility: hidden;
+        border-radius: 4px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        background: white; padding: 30px 35px;
+        border: 1px solid #bbb; box-sizing: border-box;
+    }
+
+    .card-front {
+        display: flex; flex-direction: column;
+        justify-content: center; align-items: center; text-align: center;
+    }
+    .card-back { transform: rotateY(180deg); }
+
+    .card-title {
+        font-size: 17px; font-weight: bold; color: var(--airbus-blue);
+        border-bottom: 2px solid var(--airbus-blue);
+        margin-bottom: 14px; padding-bottom: 6px;
+        width: 100%; text-align: left;
+    }
+    .front-title {
+        font-size: 20px; font-weight: bold; color: var(--airbus-blue);
+        border-bottom: 2px solid var(--airbus-blue);
+        margin-bottom: 16px; padding-bottom: 8px;
+        width: 100%; text-align: center;
+    }
+    .count { font-size: 18px; font-weight: bold; color: #444; margin-bottom: 8px; }
+    .hint { font-size: 12px; color: #aaa; margin-top: 24px; }
+
+    .body-text { font-size: 14px; line-height: 1.5; color: #000; width: 100%; }
+
+    .section-header {
+        font-weight: bold; margin-top: 10px; display: block;
+        background: #eef2f7; padding: 3px 6px;
+        border-left: 3px solid var(--airbus-blue);
+        font-size: 13px;
+    }
+
+    .action-row {
+        display: flex; justify-content: space-between;
+        margin: 3px 0; border-bottom: 1px dotted #e0e0e0;
+        padding: 2px 0;
+    }
+    .action-left { flex: 1.4; font-weight: normal; padding-right: 10px; }
+    .action-right {
+        text-align: right; font-weight: bold;
+        transition: filter 0.15s, color 0.15s;
+        color: var(--airbus-blue);
+        white-space: nowrap;
+    }
+    .action-right.blurred { filter: blur(5px); color: #bbb; }
+
+    .note-row {
+        font-size: 12px; color: #666; font-style: italic;
+        margin: 2px 0 4px 0; padding-left: 8px;
+        border-left: 2px solid #ddd;
+    }
+
+    .controls { margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+    button {
+        padding: 11px 20px; font-size: 14px; font-weight: bold;
+        cursor: pointer; background: var(--airbus-blue); color: white;
+        border: none; border-radius: 4px; min-width: 90px;
+        -webkit-tap-highlight-color: transparent;
+    }
+    button.secondary { background: #555; }
+    button:active { opacity: 0.8; }
+
+    .tap-instructions {
+        font-size: 11px; color: #999; text-align: center;
+        margin-top: 10px; line-height: 1.7;
+    }
+    .tap-instructions b { color: #555; }
+
+    @media (max-width: 500px) {
+        body { padding: 12px; }
+        .card-front, .card-back, .card-inner, .card-container { min-height: 420px; }
+        .card-front, .card-back { padding: 20px; }
+        .front-title { font-size: 17px; }
+        button { padding: 10px 14px; font-size: 13px; min-width: 78px; }
+    }
+    </style>
+
+</head>
+<body oncontextmenu="return false;">
+
+<h1>A330 MEM TRAINER</h1>
+<div class="progress" id="progress">Card 1 of 9</div>
+
+<div class="card-container" id="frame">
+    <div class="card-inner" id="display"></div>
+</div>
+
+<div class="controls">
+    <button onclick="nav(-1)">◀ PREV</button>
+    <button class="secondary" onclick="shuffleCards()">SHUFFLE</button>
+    <button onclick="nav(1)">NEXT ▶</button>
+</div>
+
+<div class="tap-instructions">
+    <b>Tap / click</b> front → flip &nbsp;|&nbsp;
+    <b>Tap / click</b> back → reveal all answers &nbsp;|&nbsp;
+    <b>Tap / click</b> again when all revealed → flip back<br>
+    <b>Right-click</b> (desktop) → reveal one answer at a time &nbsp;|&nbsp;
+    <b>Arrow keys</b> → navigate &nbsp;|&nbsp; <b>Space</b> → flip
+</div>
+
+<script>
+let cards = [
+    {
+        title: "STALL WARNING AT LIFT-OFF",
+        lines: [
+            { t: "Immediate actions:" },
+            ["THRUST", "TOGA"],
+            { note: "At the same time:" },
+            ["PITCH ATTITUDE", "15°"],
+            ["BANK", "WINGS LEVEL"]
+        ]
+    },
+    {
+        title: "STALL RECOVERY",
+        lines: [
+            { t: "As soon as any stall indication is recognised:" },
+            ["NOSE DOWN PITCH CONTROL", "APPLY"],
+            { note: "This will reduce angle of attack. If lack of pitch-down authority: reducing thrust may be necessary." },
+            ["BANK", "WINGS LEVEL"],
+            { t: "When out of stall (no longer stall indications):" },
+            ["THRUST", "INCREASE SMOOTHLY AS NEEDED"],
+            { note: "OEI: progressively compensate thrust asymmetry with rudder." },
+            ["SPEEDBRAKES", "CHECK RETRACTED"],
+            ["FLIGHT PATH", "RECOVER SMOOTHLY"],
+            { t: "If clean configuration and below 20 000 ft:" },
+            ["FLAPS 1", "SELECT"],
+            { note: "If risk of ground contact: once clearly out of stall, establish positive climb gradient." }
+        ]
+    },
+    {
+        title: "EMER DESCENT",
+        lines: [
+            ["CREW OXY MASKS", "USE"],
+            ["SIGNS", "ON"],
+            ["EMER DESCENT", "INITIATE"],
+            { t: "If A/THR not engaged:" },
+            ["THR LEVERS", "IDLE"],
+            ["SPD BRK", "FULL"]
+        ]
+    },
+    {
+        title: "LOSS OF BRAKING",
+        lines: [
+            { t: "If no braking:" },
+            ["REV", "MAX"],
+            { note: "May keep max reverse until full aircraft stop." },
+            ["BRAKE PEDALS", "RELEASE"],
+            { note: "PF releases before PM sets A/SKID OFF — avoids brutal braking in alternate mode." },
+            ["A/SKID OFF", "ORDER (PF→PM)"],
+            ["A/SKID & N/W STRG", "OFF"],
+            ["BRAKE PEDALS", "PRESS"],
+            ["MAX BRK PR", "1 000 PSI"],
+            { note: "Monitor brake pressure on BRAKES PRESS indicator." },
+            { t: "If still no braking:" },
+            ["PARK BRAKE", "USE"],
+            { note: "Short successive applications to stop the aircraft." }
+        ]
+    },
+    {
+        title: "UNRELIABLE SPEED INDICATION",
+        lines: [
+            { t: "If safe conduct of flight is impacted:" },
+            ["AP", "OFF"],
+            ["A/THR", "OFF"],
+            ["FD", "OFF"],
+            { t: "PITCH / THRUST:" },
+            ["Below THRUST RED ALT", "15° / TOGA"],
+            ["Above THR RED ALT — Below FL 100", "10° / CLB"],
+            ["Above THR RED ALT — Above FL 100", "5° / CLB"],
+            ["FLAPS (if CONF 0·1·2·3)", "MAINTAIN CURRENT CONF"],
+            ["FLAPS (if CONF FULL)", "SELECT CONF 3 AND MAINTAIN"],
+            ["SPEEDBRAKES", "CHECK RETRACTED"],
+            ["L/G", "UP"],
+            { note: "When at or above MSA or Circuit Altitude: level off for troubleshooting." }
+        ]
+    },
+    {
+        title: "TAWS CAUTION",
+        lines: [
+            { t: "TERRAIN TERRAIN / TOO LOW TERRAIN / TERRAIN AHEAD / CAUTION TERRAIN / OBSTACLE AHEAD / CAUTION OBSTACLE:" },
+            { t: "During night or IMC conditions — simultaneously:" },
+            ["AP", "OFF"],
+            ["PITCH", "PULL UP (full backstick)"],
+            ["THRUST LEVERS", "TOGA"],
+            ["SPEED BRAKE LEVER", "CHECK RETRACTED"],
+            ["BANK", "WINGS LEVEL or ADJUST"],
+            { t: "DO NOT CHANGE CONFIGURATION (SLATS/FLAPS, GEAR) UNTIL CLEAR OF OBSTACLE." },
+            { t: "During daylight and VMC — terrain/obstacles clearly in sight:" },
+            ["FLIGHT PATH", "ADJUST"],
+            { t: "SINK RATE — above 1 000 ft AAL IMC / above 500 ft AAL VMC:" },
+            ["FLIGHT PATH", "ADJUST"],
+            { t: "SINK RATE — below 1 000 ft AAL IMC / below 500 ft AAL VMC:" },
+            ["GO-AROUND", "CONSIDER"],
+            { t: "DON'T SINK:" },
+            ["FLIGHT PATH", "ADJUST"],
+            { t: "TOO LOW GEAR or TOO LOW FLAPS:" },
+            ["GO-AROUND", "PERFORM"],
+            { t: "GLIDESLOPE — above 1 000 ft AAL IMC / above 500 ft AAL VMC:" },
+            ["FLIGHT PATH", "ADJUST"],
+            { t: "GLIDESLOPE — below 1 000 ft AAL IMC / below 500 ft AAL VMC:" },
+            ["GO-AROUND", "CONSIDER"],
+            { t: "GLIDESLOPE — deliberate approach below glideslope:" },
+            ["G/S MODE", "OFF"]
+        ]
+    },
+    {
+        title: "TAWS WARNING",
+        lines: [
+            { t: "PULL UP / TERRAIN AHEAD PULL UP / OBSTACLE AHEAD PULL UP:" },
+            { note: "Simultaneously:" },
+            ["AP", "OFF"],
+            ["PITCH", "PULL UP (full backstick)"],
+            ["THRUST LEVERS", "TOGA"],
+            ["SPEED BRAKE LEVER", "CHECK RETRACTED"],
+            ["BANK", "WINGS LEVEL or ADJUST"],
+            { note: "Best climb with wings level. May adjust bank if turning is safest action. Some PULL UP alerts may be followed by AVOID TERRAIN — adjust bank as necessary." },
+            { t: "DO NOT CHANGE CONFIGURATION (SLATS/FLAPS, GEAR) UNTIL CLEAR OF OBSTACLE." }
+        ]
+    },
+    {
+        title: "TCAS CAUTION — TRAFFIC ADVISORY (TA)",
+        lines: [
+            ["MANEUVER", "DO NOT PERFORM BASED ON TA ALONE"],
+            { note: "A TA is advisory only. Wait for a Resolution Advisory before maneuvering." }
+        ]
+    },
+    {
+        title: "TCAS WARNING — RESOLUTION ADVISORY (RA)",
+        lines: [
+            { note: "Always follow RA orders — even if this results in crossing the intruder altitude." },
+            { t: "All RA — except CLIMB RA during approach CONF 3 or FULL:" },
+            ["AP (if engaged)", "OFF"],
+            ["FDs", "OFF"],
+            ["VERTICAL SPEED", "ADJUST or MAINTAIN"],
+            { note: "Respond promptly and smoothly. Avoid excessive maneuvers. Use full speed range between Vαmax and VMAX if necessary." },
+            { t: "CLIMB RA during approach in CONF 3 or FULL:" },
+            ["GO-AROUND", "PERFORM"],
+            { note: "Follow SRS GA mode." },
+            ["VERTICAL SPEED", "MONITOR"],
+            { note: "Keep V/S out of red area. Respect stall, GPWS, and windshear warnings." },
+            ["ATC", "NOTIFY"],
+            { t: "When CLEAR OF CONFLICT aural alert sounds:" },
+            ["ATC", "NOTIFY"],
+            ["LATERAL AND VERTICAL GUIDANCE", "ADJUST"],
+            { note: "Resume normal navigation in accordance with ATC clearance." },
+            ["AP/FD", "AS RQRD"]
+        ]
+    },
+    {
+        title: "WINDSHEAR WARNING — REACTIVE WINDSHEAR",
+        lines: [
+            { t: "At Takeoff — Before V1:" },
+            ["REJECT TAKEOFF", "PERFORM"],
+            { note: "If significant airspeed variations and trend below indicated V1. Aircraft may reach V1 earlier or later — ensure sufficient runway to stop." },
+            { t: "At Takeoff — After V1:" },
+            ["THR LEVERS", "TOGA"],
+            ["REACHING VR", "ROTATE"],
+            ["SRS ORDERS", "FOLLOW"],
+            { note: "If FD bars not displayed: target 17.5° pitch. May apply full backstick if necessary." },
+            { t: "When airborne, initial climb, or at landing:" },
+            ["THR LEVERS AT TOGA", "SET OR CONFIRM"],
+            ["AP (if engaged)", "KEEP ON"],
+            ["SRS ORDERS", "FOLLOW"],
+            { note: "AP disengages if AoA goes above alpha prot. If no FD bars: target 17.5° pitch." },
+            { t: "DO NOT CHANGE CONFIGURATION (SLATS/FLAPS, GEAR) UNTIL OUT OF WINDSHEAR." },
+            { t: "CAREFULLY MONITOR FLIGHT PATH AND SPEED." }
+        ]
+    }
+];
+
+// ── STATE ──
+let current = 0;
+const frame = document.getElementById('frame');
+
+function render() {
+    const item = cards[current];
+    document.getElementById('progress').textContent = `Card ${current + 1} of ${cards.length}`;
+
+    const actionCount = item.lines.filter(l => Array.isArray(l)).length;
+
+    let backHtml = `<div class="card-title">${item.title}</div><div class="body-text">`;
+    item.lines.forEach(l => {
+        if (Array.isArray(l)) {
+            backHtml += `<div class="action-row">
+                <span class="action-left">${l[0]}</span>
+                <span class="action-right blurred">${l[1]}</span>
+            </div>`;
+        } else if (l.note) {
+            backHtml += `<div class="note-row">${l.note}</div>`;
+        } else if (l.t) {
+            backHtml += `<span class="section-header">${l.t}</span>`;
+        }
+    });
+    backHtml += `</div>`;
+
+    document.getElementById('display').innerHTML = `
+        <div class="card-front">
+            <div class="front-title">${item.title}</div>
+            <div class="count">(${actionCount} action item${actionCount !== 1 ? 's' : ''})</div>
+        </div>
+        <div class="card-back">${backHtml}</div>
+    `;
+    frame.classList.remove('flipped');
+}
+
+// ── INTERACTION ──
+function handleReveal(revealOne) {
+    const isFlipped = frame.classList.contains('flipped');
+    const blurred = Array.from(document.querySelectorAll('.action-right.blurred'));
+
+    if (!isFlipped) {
+        frame.classList.add('flipped');
+        return;
+    }
+    if (blurred.length > 0) {
+        if (revealOne) {
+            blurred[0].classList.remove('blurred');
+        } else {
+            blurred.forEach(el => el.classList.remove('blurred'));
+        }
+    } else {
+        nav(1);
+    }
+}
+
+// Mouse
+let lastTouchEnd = 0;
+frame.addEventListener('mousedown', (e) => {
+    if (Date.now() - lastTouchEnd < 500) return; // ignore iOS ghost click
+    e.preventDefault();
+    if (e.button === 2) {
+        if (frame.classList.contains('flipped')) handleReveal(true);
+    } else {
+        handleReveal(false);
+    }
+});
+
+// Touch (iPad/iPhone)
+let touchStartX, touchStartY;
+frame.addEventListener('touchstart', (e) => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+}, { passive: true });
+
+frame.addEventListener('touchend', (e) => {
+    const dx = Math.abs(e.changedTouches[0].clientX - touchStartX);
+    const dy = Math.abs(e.changedTouches[0].clientY - touchStartY);
+    if (dx < 10 && dy < 10) {
+        lastTouchEnd = Date.now();
+        handleReveal(false);
+    }
+}, { passive: true });
+
+// Keyboard
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') nav(1);
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') nav(-1);
+    else if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); handleReveal(false); }
+});
+
+function nav(dir) {
+    current = (current + dir + cards.length) % cards.length;
+    render();
+}
+
+function shuffleCards() {
+    for (let i = cards.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [cards[i], cards[j]] = [cards[j], cards[i]];
+    }
+    current = 0;
+    render();
+}
+
+render();
+</script>
+
+</body>
+</html>
