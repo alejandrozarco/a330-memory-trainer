@@ -4,7 +4,7 @@ A mobile-friendly flashcard app for practicing Airbus A330 memory items (emergen
 
 ## Live Demo
 
-[**Open the trainer →**](https://alexanderkeur-del.github.io/a330-memory-trainer/)
+[**Open the trainer →**](https://alejandrozarco.github.io/a330-memory-trainer/)
 
 ## Screenshots
 
